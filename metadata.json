@@ -1,0 +1,6 @@
+{
+  "name": "MotorTwin AI — Industrial Predictive Maintenance",
+  "description": "Real-time industrial motor predictive maintenance control center with ESP32 sensor integration, machine learning anomaly detection, interactive 3D digital twin, and SCADA analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
