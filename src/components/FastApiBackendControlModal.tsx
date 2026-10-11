@@ -1,6 +1,7 @@
 /**
  * Machine Learning Backend Controller & Live Status Modal
- * Handles same-origin Cloud Backend API (/api), local Python FastAPI, and in-app engine.
+ * Configured for the live production Render FastAPI service:
+ * https://industrialmotortwin.onrender.com
  */
 
 import React, { useState } from 'react';
@@ -17,11 +18,12 @@ import {
   Cpu,
   ShieldCheck,
   ExternalLink,
-  Info,
+  Globe,
 } from 'lucide-react';
 import {
   fastApiService,
   FastApiStatus,
+  DEFAULT_RENDER_FASTAPI_URL,
   DEFAULT_BACKEND_API_URL,
   DEFAULT_LOCAL_FASTAPI_URL,
 } from '../services/fastApiService';
@@ -37,14 +39,12 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
   onClose,
   status,
 }) => {
-  const [urlInput, setUrlInput] = useState(status.url || DEFAULT_BACKEND_API_URL);
+  const [urlInput, setUrlInput] = useState(status.url || DEFAULT_RENDER_FASTAPI_URL);
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ ok: boolean; ping: number; msg: string } | null>(null);
   const [copiedCmd, setCopiedCmd] = useState(false);
 
   if (!isOpen) return null;
-
-  const startCommand = `python3 -m uvicorn backend_fastapi.main:app --host 127.0.0.1 --port 8000 --reload`;
 
   const handleTestConnection = async () => {
     setIsTesting(true);
@@ -54,7 +54,17 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
     setIsTesting(false);
   };
 
-  const handleSetCloudBackend = async () => {
+  const handleSetRenderCloud = async () => {
+    setUrlInput(DEFAULT_RENDER_FASTAPI_URL);
+    fastApiService.setMode('LIVE_FASTAPI_RENDER', DEFAULT_RENDER_FASTAPI_URL);
+    setIsTesting(true);
+    setTestResult(null);
+    const res = await fastApiService.testConnection(DEFAULT_RENDER_FASTAPI_URL);
+    setTestResult(res);
+    setIsTesting(false);
+  };
+
+  const handleSetLocalBackend = async () => {
     setUrlInput(DEFAULT_BACKEND_API_URL);
     fastApiService.setMode('LIVE_BACKEND_API', DEFAULT_BACKEND_API_URL);
     setIsTesting(true);
@@ -64,35 +74,12 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
     setIsTesting(false);
   };
 
-  const handleSetFastApiProxy = async () => {
-    const proxyUrl = '/fastapi';
-    setUrlInput(proxyUrl);
-    fastApiService.setMode('LIVE_FASTAPI_LOCAL', proxyUrl);
-    setIsTesting(true);
-    setTestResult(null);
-    const res = await fastApiService.testConnection(proxyUrl);
-    setTestResult(res);
-    setIsTesting(false);
-  };
-
-  const handleSetCustomUrl = async () => {
-    fastApiService.setUrl(urlInput);
-    fastApiService.setMode('LIVE_FASTAPI_LOCAL', urlInput);
-    await handleTestConnection();
-  };
-
   const handleSetInAppMode = () => {
     fastApiService.setMode('IN_APP_ML');
   };
 
-  const handleCopyCommand = () => {
-    navigator.clipboard.writeText(startCommand);
-    setCopiedCmd(true);
-    setTimeout(() => setCopiedCmd(false), 2000);
-  };
-
-  const isCloudBackend = status.mode === 'LIVE_BACKEND_API';
-  const isLocalFastApi = status.mode === 'LIVE_FASTAPI_LOCAL';
+  const isRenderCloud = status.mode === 'LIVE_FASTAPI_RENDER';
+  const isLocalBackend = status.mode === 'LIVE_BACKEND_API';
   const isInApp = status.mode === 'IN_APP_ML';
   const isOnline = status.isOnline;
 
@@ -110,7 +97,7 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
                 Machine Learning Backend Controller
               </h2>
               <div className="text-xs text-slate-400 mt-0.5 font-mono">
-                Active Endpoint: {status.url}
+                Connected: {status.url}
               </div>
             </div>
           </div>
@@ -128,7 +115,7 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
           <div className="p-4 rounded-xl border bg-slate-900/80 border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Current Inference Pipeline
+                Live Inference Backend Status
               </span>
               <div className="flex items-center gap-2 mt-1">
                 <span
@@ -139,12 +126,12 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
                   }`}
                 />
                 <span className="text-sm font-bold font-mono text-white">
-                  {isCloudBackend
-                    ? 'LIVE BACKEND API (/api/v1/predict/anomaly) - ACTIVE'
-                    : isLocalFastApi
+                  {isRenderCloud
                     ? isOnline
-                      ? 'LOCAL PYTHON FASTAPI SERVER - LIVE'
-                      : 'LOCAL FASTAPI - OFFLINE (FALLBACK ACTIVE)'
+                      ? 'RENDER CLOUD FASTAPI (LIVE & VERIFIED)'
+                      : 'RENDER CLOUD (CONNECTING / RETRYING)'
+                    : isLocalBackend
+                    ? 'LOCAL BACKEND API (/api)'
                     : 'IN-APP CLIENT ML ENGINE'}
                 </span>
               </div>
@@ -152,69 +139,94 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
 
             {isOnline && status.lastPingMs !== null && (
               <div className="text-right font-mono text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/60 px-2.5 py-1 rounded-md">
-                <span>Latency: {status.lastPingMs} ms</span>
+                <span>Ping: {status.lastPingMs} ms</span>
               </div>
             )}
           </div>
 
-          {/* Explanation Callout for Mixed Content */}
-          <div className="p-3.5 bg-slate-900/50 border border-slate-800 rounded-lg flex items-start gap-3 text-xs text-slate-300">
-            <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
-            <div className="space-y-1">
-              <span className="font-semibold text-white">Why did direct http://127.0.0.1 fail?</span>
-              <p className="text-slate-400 leading-relaxed">
-                Because this application runs over secure <strong>HTTPS</strong>, web browsers block unencrypted{' '}
-                <code>http://127.0.0.1:8000</code> calls due to browser Mixed Content & Private Network Access policies.
-                Use the <strong>Live Backend API</strong> below (runs on the same origin without port 8000) or our same-origin <code>/fastapi</code> proxy tunnel.
-              </p>
+          {/* Render Cloud Live Service Card */}
+          <div className="p-4 bg-emerald-950/20 border border-emerald-600/40 rounded-xl space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-emerald-300 font-semibold text-xs">
+                <Globe className="w-4 h-4 text-emerald-400" />
+                <span>Primary Production Service (Render Cloud)</span>
+              </div>
+              <a
+                href="https://industrialmotortwin.onrender.com/docs"
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center gap-1 text-[11px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+              >
+                <span>Interactive Swagger API Docs</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
             </div>
+            <div className="flex items-center justify-between gap-2 pt-1">
+              <div className="text-xs font-mono text-emerald-400 font-semibold flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Service URL:</span>
+              </div>
+              <button
+                onClick={handleSetRenderCloud}
+                className="flex items-center gap-1.5 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold shadow-md transition-colors"
+              >
+                <Zap className="w-3.5 h-3.5" />
+                <span>Set Active Live Backend</span>
+              </button>
+            </div>
+            <div className="text-xs font-mono text-slate-300 bg-slate-950/70 p-2.5 rounded-lg border border-slate-800 break-all">
+              https://industrialmotortwin.onrender.com
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed">
+              Your FastAPI microservice is live and serving predictions directly from Render over HTTPS with full CORS enabled.
+            </p>
           </div>
 
           {/* 3 Backend Modes */}
           <div className="space-y-2">
             <span className="text-xs font-semibold uppercase tracking-wider text-slate-400 block">
-              Choose Backend Mode
+              Inference Mode Selection
             </span>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Option 1: Live Cloud Backend API (Recommended) */}
+              {/* Option 1: Render Cloud FastAPI (Primary) */}
               <button
-                onClick={handleSetCloudBackend}
+                onClick={handleSetRenderCloud}
                 className={`p-3.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
-                  isCloudBackend
+                  isRenderCloud
                     ? 'bg-cyan-950/60 border-cyan-500/90 text-white shadow-lg ring-1 ring-cyan-500/30'
                     : 'bg-slate-900/40 border-slate-800 hover:border-slate-700 text-slate-400'
                 }`}
               >
                 <div className="flex items-center justify-between w-full mb-1">
                   <div className="flex items-center gap-1.5 font-semibold text-xs text-cyan-300">
-                    <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Live Backend API</span>
+                    <Globe className="w-3.5 h-3.5 text-cyan-400" />
+                    <span>Render Cloud</span>
                   </div>
-                  {isCloudBackend && <Check className="w-4 h-4 text-cyan-400" />}
+                  {isRenderCloud && <Check className="w-4 h-4 text-cyan-400" />}
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
-                  Zero setup required. Same-origin HTTP API at <code>/api</code>.
+                  Live FastAPI at <code>industrialmotortwin.onrender.com</code>.
                 </div>
               </button>
 
-              {/* Option 2: Python FastAPI via Proxy / Tunnel */}
+              {/* Option 2: Local Backend API */}
               <button
-                onClick={handleSetFastApiProxy}
+                onClick={handleSetLocalBackend}
                 className={`p-3.5 rounded-lg border text-left transition-all flex flex-col justify-between ${
-                  isLocalFastApi && urlInput === '/fastapi'
+                  isLocalBackend
                     ? 'bg-cyan-950/60 border-cyan-500/90 text-white shadow-lg ring-1 ring-cyan-500/30'
                     : 'bg-slate-900/40 border-slate-800 hover:border-slate-700 text-slate-400'
                 }`}
               >
                 <div className="flex items-center justify-between w-full mb-1">
                   <div className="flex items-center gap-1.5 font-semibold text-xs text-slate-200">
-                    <Zap className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Python Proxy Tunnel</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Same-Origin API</span>
                   </div>
-                  {isLocalFastApi && urlInput === '/fastapi' && <Check className="w-4 h-4 text-cyan-400" />}
+                  {isLocalBackend && <Check className="w-4 h-4 text-cyan-400" />}
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
-                  Routes via <code>/fastapi</code> to local port 8000 (bypasses browser CORS).
+                  Built-in local route at <code>/api/v1/predict/anomaly</code>.
                 </div>
               </button>
 
@@ -235,7 +247,7 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
                   {isInApp && <Check className="w-4 h-4 text-emerald-400" />}
                 </div>
                 <div className="text-[11px] text-slate-400 leading-snug">
-                  Client-side ISO 10816 + Multivariate statistical distance engine.
+                  Client-side TypeScript statistical & decision matrix engine.
                 </div>
               </button>
             </div>
@@ -245,7 +257,7 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
           <div className="space-y-3 pt-1">
             <div>
               <label className="text-xs font-semibold text-slate-300 block mb-1">
-                API Endpoint Address
+                Active Service URL
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -253,7 +265,7 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
                   value={urlInput}
                   onChange={e => setUrlInput(e.target.value)}
                   className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs font-mono text-slate-200 focus:outline-none focus:border-cyan-500"
-                  placeholder="/api or /fastapi or https://your-tunnel.ngrok.app"
+                  placeholder="https://industrialmotortwin.onrender.com"
                 />
                 <button
                   onClick={handleTestConnection}
@@ -261,13 +273,7 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-medium text-slate-200 rounded-lg border border-slate-700 transition-colors shrink-0"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isTesting ? 'animate-spin' : ''}`} />
-                  <span>{isTesting ? 'Pinging...' : 'Test Connection'}</span>
-                </button>
-                <button
-                  onClick={handleSetCustomUrl}
-                  className="px-3.5 py-2 bg-cyan-600 hover:bg-cyan-500 text-xs font-medium text-white rounded-lg transition-colors shrink-0"
-                >
-                  Set Live
+                  <span>{isTesting ? 'Testing...' : 'Test Ping'}</span>
                 </button>
               </div>
             </div>
@@ -290,42 +296,19 @@ export const FastApiBackendControlModal: React.FC<FastApiBackendControlModalProp
                   <div className="font-semibold">{testResult.msg}</div>
                   <div className="text-[11px] text-slate-400 mt-0.5">
                     {testResult.ok
-                      ? 'Real-time telemetry inference is executing successfully on the live backend.'
-                      : 'Switch to Live Backend API (/api) for instant one-click verified connection.'}
+                      ? 'Inference requests are streaming successfully to the live FastAPI service.'
+                      : 'Ensure the endpoint is accessible and responsive.'}
                   </div>
                 </div>
               </div>
             )}
-          </div>
-
-          {/* Quick Terminal Launch Command for Local Python */}
-          <div className="p-3.5 bg-slate-950 border border-slate-800 rounded-lg space-y-2">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <div className="flex items-center gap-1.5 text-cyan-300 font-semibold font-mono">
-                <Terminal className="w-3.5 h-3.5" />
-                <span>If running Python FastAPI locally on your laptop:</span>
-              </div>
-              <button
-                onClick={handleCopyCommand}
-                className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 transition-colors font-mono"
-              >
-                {copiedCmd ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
-                <span>{copiedCmd ? 'Copied' : 'Copy Command'}</span>
-              </button>
-            </div>
-            <pre className="text-[11px] font-mono text-slate-300 overflow-x-auto p-2 bg-slate-900 rounded border border-slate-800">
-              {startCommand}
-            </pre>
-            <p className="text-[11px] text-slate-500 leading-relaxed">
-              When running locally on port 8000, select the <strong>"Python Proxy Tunnel (/fastapi)"</strong> option above so your browser forwards requests through the app server without HTTPS Mixed Content blocks.
-            </p>
           </div>
         </div>
 
         {/* Footer */}
         <div className="px-6 py-3.5 border-t border-slate-800 bg-slate-900/40 flex items-center justify-between">
           <span className="text-xs text-slate-400 font-mono">
-            Backend: {isOnline ? 'Online (Connected)' : 'Fallback Active'}
+            Active: {status.url}
           </span>
           <button
             onClick={onClose}

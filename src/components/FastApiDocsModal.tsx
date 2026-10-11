@@ -163,6 +163,27 @@ if __name__ == "__main__":
         </div>
 
         <div className="p-6 space-y-4 overflow-y-auto max-h-[65vh]">
+          {/* Live Deployment Banner */}
+          <div className="p-3.5 bg-emerald-950/30 border border-emerald-600/40 rounded-lg flex items-center justify-between gap-3">
+            <div>
+              <div className="text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Live Microservice Deployed on Render</span>
+              </div>
+              <div className="text-[11px] font-mono text-slate-300 mt-0.5">
+                https://industrialmotortwin.onrender.com
+              </div>
+            </div>
+            <a
+              href="https://industrialmotortwin.onrender.com/docs"
+              target="_blank"
+              rel="noreferrer"
+              className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-mono font-medium rounded-md transition-colors whitespace-nowrap"
+            >
+              Open Swagger Docs ↗
+            </a>
+          </div>
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-xs font-mono text-slate-300">
               <Terminal className="w-4 h-4 text-cyan-400" />

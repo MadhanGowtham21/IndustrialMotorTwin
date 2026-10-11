@@ -238,6 +238,12 @@ export default defineConfig(() => {
           changeOrigin: true,
           rewrite: p => p.replace(/^\/fastapi/, ''),
         },
+        '/render-fastapi': {
+          target: 'https://industrialmotortwin.onrender.com',
+          changeOrigin: true,
+          secure: true,
+          rewrite: p => p.replace(/^\/render-fastapi/, ''),
+        },
       },
     },
   };

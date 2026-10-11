@@ -244,14 +244,18 @@ export const Header: React.FC<HeaderProps> = ({
                   : 'text-amber-400 font-semibold'
               }
             >
-              {fastApiStatus.mode === 'LIVE_BACKEND_API'
+              {fastApiStatus.mode === 'LIVE_FASTAPI_RENDER'
+                ? fastApiStatus.isOnline
+                  ? `LIVE RENDER FASTAPI (${fastApiStatus.lastPingMs || 0}ms)`
+                  : 'CONNECTING TO RENDER...'
+                : fastApiStatus.mode === 'LIVE_BACKEND_API'
                 ? fastApiStatus.isOnline
                   ? `LIVE BACKEND API (${fastApiStatus.lastPingMs || 0}ms)`
                   : 'BACKEND OFFLINE'
                 : fastApiStatus.mode === 'LIVE_FASTAPI_LOCAL'
                 ? fastApiStatus.isOnline
-                  ? `LIVE FASTAPI (${fastApiStatus.lastPingMs || 0}ms)`
-                  : 'FASTAPI OFFLINE (FALLBACK)'
+                  ? `LIVE LOCAL FASTAPI (${fastApiStatus.lastPingMs || 0}ms)`
+                  : 'LOCAL FASTAPI OFFLINE'
                 : 'IN-APP ML ENGINE'}
             </span>
           </button>

@@ -68,7 +68,9 @@ export const AiFaultDiagnosis: React.FC<AiFaultDiagnosisProps> = React.memo(({
             <div className="flex items-center gap-2 text-xs text-slate-400 mt-0.5 font-mono">
               <span>Model: {diagnosis.modelVersion}</span>
               <span aria-hidden="true">·</span>
-              <span>Source: {diagnosis.backendSource ? 'Live FastAPI' : 'In-App ML'}</span>
+              <span className={diagnosis.backendSource ? 'text-emerald-400 font-semibold' : 'text-slate-400'}>
+                Source: {diagnosis.backendSource?.includes('render.com') ? 'Render Cloud FastAPI' : diagnosis.backendSource ? 'Live Backend' : 'In-App ML'}
+              </span>
             </div>
           </div>
         </div>
@@ -78,10 +80,11 @@ export const AiFaultDiagnosis: React.FC<AiFaultDiagnosisProps> = React.memo(({
           {onOpenFastApiControl && (
             <button
               onClick={onOpenFastApiControl}
-              className="px-2.5 py-1 rounded-lg border border-slate-700 bg-slate-900 hover:bg-slate-800 text-[11px] font-mono text-cyan-400 transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg border border-cyan-800/60 bg-cyan-950/40 hover:bg-cyan-900/50 text-[11px] font-mono text-cyan-300 transition-colors"
               title="Configure live FastAPI endpoint"
             >
-              Set Live FastAPI
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>FastAPI Backend</span>
             </button>
           )}
           <div className={`px-3 py-1 rounded-lg border text-xs font-mono font-semibold flex items-center gap-1.5 ${severityColor}`}>
